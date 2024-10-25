@@ -11,6 +11,7 @@ fastapi = {extras = ["standard"], version = "^0.115.3"}
 uvicorn = "^0.32.0"
 pika = "^1.3.2"
 python-multipart = "^0.0.12"
+sqlalchemy = "^2.0.36"
 
 
 [build-system]
@@ -43,7 +44,7 @@ addopts = '-p no:warnings'
 [tool.taskipy.tasks]
 lint = 'ruff check . && ruff check . --diff'
 format = 'ruff check . --fix && ruff format .'
-run = 'fastapi dev system_py/main.py'
+run = 'fastapi dev app/main.py'
 pre_test = 'task lint'
-test = 'pytest -s -x --cov=system_py -vv'
+test = 'pytest -s -x --cov=app -vv'
 post_test = 'coverage html'

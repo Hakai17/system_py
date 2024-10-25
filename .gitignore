@@ -183,6 +183,7 @@ pyrightconfig.json
 .idea/
 .python-version
 poetry.lock
+files.db
 
 # Bitbucket pipeline
 bitbucket-pipelines.yml

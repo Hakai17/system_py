@@ -1,29 +1,35 @@
-import pika
-import time
+from sqlalchemy import create_engine, MetaData, Table
+from sqlalchemy.orm import sessionmaker
+import os
+from datetime import time
+import logging
 
-def callback(ch, method, properties, body):
-    file_location = body.decode()
-    print(f"Processando o arquivo: {file_location}")
+logger = logging.getLogger(__name__)
 
-    # Simulação de processamento (ex: redimensionar uma imagem)
-    time.sleep(5)
+DATABASE_URL = "sqlite:///./files.db"
+engine = create_engine(DATABASE_URL)
+metadata = MetaData()
+files_table = Table('files', metadata, autoload_with=engine)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-    print(f"Arquivo {file_location} processado com sucesso!")
-    ch.basic_ack(delivery_tag=method.delivery_tag)
+def update_file_status(filename, status):
+    db = SessionLocal()
+    file_record = db.query(files_table).filter(files_table.c.filename == filename).first()
+    if file_record:
+        db.execute(files_table.update().where(files_table.c.filename == filename).values(status=status))
+    db.commit()
+    db.close()
 
-def start_consumer():
-    connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
-    channel = connection.channel()
-
-    # Declarar a fila para garantir que ela exista
-    channel.queue_declare(queue='file_queue', durable=True)
-
-    # Consome as mensagens da fila
-    channel.basic_qos(prefetch_count=1)
-    channel.basic_consume(queue='file_queue', on_message_callback=callback)
-
-    print("Aguardando mensagens para processamento...")
-    channel.start_consuming()
-
-if __name__ == "__main__":
-    start_consumer()
+def process_file(file_location):
+    try:
+        if os.path.exists(file_location):
+            print(f"Processando o arquivo: {file_location}")
+            time.sleep(5)
+            if file_location.endswith(".fail"):
+                raise Exception("Erro no processamento do arquivo.")
+            print(f"Arquivo {file_location} processado com sucesso!")
+            update_file_status(os.path.basename(file_location), "processado")
+        else:
+            raise FileNotFoundError(f"Arquivo {file_location} não encontrado.")
+    except Exception as e:
+        logging.error(f"Erro ao processar {file_location}: {str(e)}")
